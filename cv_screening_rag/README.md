@@ -59,7 +59,7 @@ docker run --rm -p 8501:8501 --env-file .env cv-screening-rag
 ```bash
 docker run --rm -p 8888:8888 --env-file .env cv-screening-rag jupyter lab --ip=0.0.0.0 --no-browser --allow-root
 ```
-Then open the printed URL in your browser.
+Then run http://localhost:8501 to run the streamlit app, and run the printed URL in terminal to run the jupyter lab.
 
 ---
 
@@ -88,20 +88,9 @@ You simply upload your own PDF resumes through the Streamlit interface, and the 
 ├── .env.example
 └── README.md
 ```
-
 ---
 
-## 6) Key commands (dev)
-
-- Change models via env:
-  ```bash
-  export OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-  export OPENAI_CHAT_MODEL=gpt-4o-mini
-  ```
-
----
-
-## 7) Notes
+## 6) Notes
 
 - This repo uses a **local FAISS** index for simplicity.
 - The app supports **PDF upload**;
