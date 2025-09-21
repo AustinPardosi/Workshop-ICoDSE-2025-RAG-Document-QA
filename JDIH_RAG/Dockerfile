@@ -17,8 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy PDF files to container
+COPY data/ ./data/
+
 # Create necessary directories
-RUN mkdir -p Memory data
+RUN mkdir -p Memory
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

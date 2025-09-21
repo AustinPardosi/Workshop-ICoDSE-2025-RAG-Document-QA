@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+    cv-screening-rag:
+        build: .
+        ports:
+            - "8501:8501" # Streamlit
+            - "8888:8888" # Jupyter (optional)
+        environment:
+            - OPENAI_API_KEY=${OPENAI_API_KEY}
+        volumes:
+            - ./uploads:/app/uploads # Mount local uploads directory
+            - ./.env:/app/.env # Mount .env file
+        command: streamlit run app/streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+        restart: unless-stopped
