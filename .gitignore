@@ -1,2 +1,19 @@
+# Secrets
 .env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Generated vector indexes (rebuilt by the app / notebook)
+Memory/
+
+# Uploaded CVs contain personal data - never commit them
+uploads/
+
+# OS / tooling
+.DS_Store
 .claude
