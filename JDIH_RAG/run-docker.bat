@@ -48,18 +48,18 @@ echo 📄 Ditemukan %PDF_COUNT% file PDF di folder data\
 
 REM Build and run with docker-compose
 echo 🔨 Building Docker image...
-docker-compose build
+docker compose build
 
 echo 🚀 Starting containers...
-docker-compose up -d
+docker compose up -d
 
 echo ✅ JDIH RAG sudah berjalan!
 echo 🌐 Akses aplikasi di: http://localhost:8501
 echo.
 echo 📋 Useful commands:
-echo   - Stop containers: docker-compose down
-echo   - View logs: docker-compose logs -f
-echo   - Restart: docker-compose restart
+echo   - Stop containers: docker compose down
+echo   - View logs: docker compose logs -f
+echo   - Restart: docker compose restart
 echo.
-echo 🔍 Untuk debug, gunakan: docker-compose logs -f jdih-rag
+echo 🔍 Untuk debug, gunakan: docker compose logs -f jdih-rag
 pause

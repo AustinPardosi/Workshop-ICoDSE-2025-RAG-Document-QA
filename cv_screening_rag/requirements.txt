@@ -7,10 +7,8 @@ pandas>=2.2.0
 # Vector DB
 faiss-cpu>=1.8.0
 
-# Data / PDFs
-datasets>=2.20.0
+# PDFs
 pypdf>=4.2.0
-pdfplumber>=0.11.0
 
 # App
 streamlit>=1.35.0
