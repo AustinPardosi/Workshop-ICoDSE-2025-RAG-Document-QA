@@ -1,97 +1,76 @@
-# CV Screening RAG Chatbot
+# CV Screening RAG
 
-A hands-on project that builds a Retrieval-Augmented Generation (RAG) chatbot over a collection of resumes (CVs).  
-Instead of using external datasets, you **upload your own PDF resumes** to build the searchable index.
+This is a RAG assistant for HR screening. You upload PDF resumes and ask questions in natural language, such as *"Who has strong Python + SQL for data engineering?"*, and get answers grounded in the retrieved CV snippets.
 
-**What you get:**
-- A step-by-step Jupyter notebook
-- A Streamlit chatbot app
-- Dockerfile and requirements
-- Simple local FAISS vector index
-- OpenAI LLM + embeddings for retrieval-augmented answers
+It is the framework-free counterpart to [JDIH RAG](../JDIH_RAG/). The whole pipeline uses only the OpenAI SDK and FAISS, with no LangChain, so every step is visible:
 
----
+| Step | Where | What it does |
+|---|---|---|
+| Extract | `app/streamlit_app.py` | Extracts text from the uploaded PDFs with `pypdf` |
+| Chunk | `rag_core.chunk_text` | Word window of about 400 tokens with a 60-token overlap (roughly 4 characters per token) |
+| Embed and index | `rag_core.embed_texts`, `build_faiss_index` | Batches OpenAI embeddings into a FAISS inner-product index (cosine similarity) |
+| Retrieve and answer | `rag_core.answer_with_rag` | Takes the top-k snippets and sends them to the chat model with an HR-assistant prompt |
 
-## 1) Prereqs
+The index is kept in the Streamlit session and is not saved to disk. It is rebuilt each time you click **(Re)build Index**.
 
-- Python 3.10+ (or just use Docker)
-- An OpenAI API key and network access
-- (Optional) GPUs not required
+> **Privacy:** CV text and your questions are sent to the OpenAI API. Only use resumes you have permission to process. `uploads/` is git-ignored so that CVs are never committed.
 
-> ⚠️ **Privacy tip**: The demo sends query text and retrieved chunks to OpenAI. Avoid using real PII during demos unless you have permission.
+## Run locally
 
----
-
-## 2) Quickstart (no Docker)
+You need Python 3.10+.
 
 ```bash
-python -m venv .venv && source .venv/bin/activate  # on Windows: .venv\Scripts\activate
+cd cv_screening_rag
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env  # then edit OPENAI_API_KEY
+cp .env.example .env                                  # then set OPENAI_API_KEY
+streamlit run app/streamlit_app.py                    # http://localhost:8501
 ```
 
-### Launch Streamlit app
+1. Upload one or more PDF resumes in the sidebar.
+2. Click **(Re)build Index**.
+3. Ask a question. The answer appears on the left and the retrieved snippets on the right.
+
+If you change the embedding model after building, the app resets the index, because the vector dimensions differ between models.
+
+## Notebook
+
 ```bash
-streamlit run app/streamlit_app.py
+jupyter lab notebooks/CV_Screening_RAG.ipynb
 ```
 
-### Run the notebook
+The notebook reads PDFs from `notebooks/uploads/`. Put a few resumes there before running it.
+
+## Run with Docker
+
 ```bash
-jupyter lab  # or jupyter notebook
-# open notebooks/CV_Screening_RAG_Chatbot.ipynb
+cd cv_screening_rag
+cp .env.example .env                                  # then set OPENAI_API_KEY
+docker compose up --build                             # http://localhost:8501
 ```
 
----
+To run Jupyter Lab from the same image instead:
 
-## 3) Quickstart with Docker
-
-Build the image:
 ```bash
 docker build -t cv-screening-rag .
+docker run --rm -p 8888:8888 --env-file .env cv-screening-rag \
+  jupyter lab --ip=0.0.0.0 --no-browser --allow-root
 ```
 
-### Run Streamlit
-```bash
-docker run --rm -p 8501:8501 --env-file .env cv-screening-rag
-```
-
-### Run Jupyter Lab
-```bash
-docker run --rm -p 8888:8888 --env-file .env cv-screening-rag jupyter lab --ip=0.0.0.0 --no-browser --allow-root
-```
-Then run http://localhost:8501 to run the streamlit app, and run the printed URL in terminal to run the jupyter lab.
-
----
-
-## 4) Dataset
-
-You simply upload your own PDF resumes through the Streamlit interface, and the app:
-- Extracts text from PDFs
-- Chunks text into passages
-- Embeds them with OpenAI embeddings
-- Stores them in a FAISS index for semantic search
-
----
-
-## 5) Project Structure
+## Layout
 
 ```
-.
-├── app/
-│   └── streamlit_app.py
-├── notebooks/
-│   └── CV_Screening_RAG_Chatbot.ipynb
-├── rag/
-│   └── rag_core.py
+cv_screening_rag/
+├── app/streamlit_app.py            # upload, index, ask
+├── rag/rag_core.py                 # chunking, embeddings, FAISS, prompting
+├── notebooks/CV_Screening_RAG.ipynb
+├── Dockerfile, docker-compose.yml
 ├── requirements.txt
-├── Dockerfile
-├── .env.example
-└── README.md
+└── .env.example
 ```
----
 
-## 6) Notes
+## Next steps
 
-- This repo uses a **local FAISS** index for simplicity.
-- The app supports **PDF upload**;
-- Feel free to replace FAISS with a managed vector DB (Chroma, PgVector, Pinecone) for production.
+- Add structured filters such as years of experience or location alongside semantic search.
+- Improve PDF parsing for multi-column layouts, tables and scanned CVs (OCR).
+- Add bias and privacy guardrails before using this on real hiring decisions.

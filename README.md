@@ -1,241 +1,106 @@
-# Workshop ICoDSE 2025 - RAG Document Q&A
+# Document Q&A with RAG — ICoDSE 2025 Workshop
 
-Repository untuk workshop **"Studi Kasus: Document Q&A"** dalam acara **ICoDSE 2025**.
+![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-3776AB?logo=python&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-0.1-1C3C3C)
+![FAISS](https://img.shields.io/badge/vector%20store-FAISS-0467DF)
+![OpenAI](https://img.shields.io/badge/LLM-OpenAI-412991?logo=openai&logoColor=white)
+![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)
 
-## 📋 Deskripsi
+Materials for the hands-on session **"Studi Kasus: Document Q&A"** at **ICoDSE 2025** (International Conference on Data and Software Engineering).
 
-Workshop ini membahas implementasi sistem RAG (Retrieval-Augmented Generation) untuk melakukan tanya jawab terhadap dokumen. Terdapat dua implementasi utama:
+The workshop builds Retrieval-Augmented Generation (RAG) systems end to end: from raw PDFs to a grounded, source-citing answer in a web app. There are two case studies. Each one comes with a teaching notebook and a runnable Streamlit app.
 
-1. **CV Screening RAG** - Sistem untuk screening CV/resume
-2. **JDIH RAG** - Sistem untuk tanya jawab dokumen peraturan akademik ITB
+| Case study | Question it answers | Corpus | Built with |
+|---|---|---|---|
+| [**JDIH RAG**](JDIH_RAG/) | *"What are the rules for X at ITB?"* in Indonesian, with cited sources | 4 official ITB regulations (bundled) | LangChain · FAISS · OpenAI · Streamlit · Docker |
+| [**CV Screening RAG**](cv_screening_rag/) | *"Who has strong Python + SQL experience?"* over a stack of CVs | Your own PDF resumes (uploaded) | OpenAI SDK · FAISS · Streamlit · Docker (no framework) |
 
-## 🏗️ Struktur Proyek
+Both projects use the same pipeline. JDIH RAG shows the framework route and adds retrieval improvements such as query expansion, reranking and metadata-rich context. CV Screening RAG builds that pipeline in about 100 lines of plain Python, so you can see exactly what the framework is doing for you.
 
-```
-Workshop-ICoDSE-2025-RAG-Document-QA/
-├── Assets/
-│   └── Data/                     # Dokumen PDF untuk JDIH RAG
-│       ├── Peraturan Kemahasiswaan ITB.pdf
-│       ├── doc (12).pdf
-│       ├── doc (13).pdf
-│       └── doc (8).pdf
-├── cv_screening_rag/             # Implementasi CV Screening
-│   ├── app/
-│   │   └── streamlit_app.py
-│   ├── rag/
-│   │   └── rag_core.py
-│   ├── notebooks/
-│   │   └── CV_Screening_RAG.ipynb
-│   ├── requirements.txt
-│   └── README.md
-├── JDIH_RAG/                     # Implementasi JDIH (Enhanced)
-│   ├── app/
-│   │   └── streamlit_app.py      # Streamlit app dengan fitur industri
-│   ├── rag/
-│   │   ├── __init__.py
-│   │   └── rag_core.py           # Enhanced RAG core dengan metadata
-│   ├── requirements.txt
-│   ├── Dockerfile                # Container deployment
-│   └── README.md
-├── notebooks/
-│   └── workshop.ipynb            # Jupyter notebook workshop
-├── requirements.txt              # Global requirements
-└── README.md                     # Dokumentasi utama
+## How it works
+
+```mermaid
+flowchart LR
+    subgraph IDX["Indexing · once per corpus"]
+        A["PDF documents"] --> B["Extract text"] --> C["Chunk"] --> D["Embed<br/>text-embedding-3-small"] --> E[("FAISS index")]
+    end
+    subgraph GEN["Generation · per question"]
+        Q["User question"] --> F["Embed query<br/>(+ expansion)"] --> G["Top-k similarity search"]
+        G --> H["Rerank"] --> I["Augment prompt with<br/>source-labelled chunks"] --> J["LLM<br/>gpt-4o-mini"] --> K["Grounded answer<br/>+ citations"]
+    end
+    E --> G
 ```
 
-## 🚀 Quick Start
+## Workshop flow
 
-### 1. Setup Environment
+1. **Indexing pipeline.** In [`workshop_jdih.ipynb`](JDIH_RAG/notebooks/workshop_jdih.ipynb) you load the regulations, chunk them, check the chunk-size distribution, embed the chunks and store them in FAISS.
+2. **Generation pipeline.** In the same notebook you retrieve relevant chunks, add them to the prompt and generate an answer that stays within the retrieved context.
+3. **Domain prompting.** The second half of the notebook covers legal-analysis prompt templates for compliance questions, procedures, and rights and obligations.
+4. **From notebook to product.** The [JDIH Streamlit app](JDIH_RAG/app/streamlit_app.py) lets you change the chunking strategy, top-k, query expansion and reranking, and watch the retrieved context change.
+5. **Framework-free RAG.** The [CV Screening app](cv_screening_rag/) runs the same pipeline with only the OpenAI SDK and FAISS.
+
+## Quick start
+
+**Prerequisites:** an [OpenAI API key](https://platform.openai.com/api-keys), plus Python 3.10 or 3.11 or Docker. JDIH RAG pins `numpy` 1.24 and `faiss-cpu` 1.7, and neither ships wheels for Python 3.12+. The two projects have separate dependency sets, so give each one its own virtual environment.
 
 ```bash
-# Clone repository
-git clone <repository-url>
-cd Workshop-ICoDSE-2025-RAG-Document-QA
+git clone https://github.com/AustinPardosi/Workshop-ICoDSE-2025-RAG-Document-QA.git
+cd Workshop-ICoDSE-2025-RAG-Document-QA/JDIH_RAG
 
-# Install dependencies
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+cp .env.example .env                                  # then set OPENAI_API_KEY
 
-# Setup OpenAI API Key
-echo "OPENAI_API_KEY=your-api-key-here" > .env
+streamlit run app/streamlit_app.py                    # http://localhost:8501
 ```
 
-### 2. Jalankan JDIH RAG (Recommended)
+In the sidebar, click **Build/Rebuild Index**, then ask a question or pick one of the examples.
 
-```bash
-cd JDIH_RAG
-streamlit run app/streamlit_app.py
+To use Docker instead, run `docker compose up --build` inside `JDIH_RAG/` or `cv_screening_rag/`. Setup details for each project are in its own README.
+
+## Repository layout
+
+```
+.
+├── JDIH_RAG/                    # Case study 1: regulation Q&A (LangChain)
+│   ├── app/streamlit_app.py     #   Streamlit UI
+│   ├── rag/rag_core.py          #   chunking, retrieval, reranking, prompting, metrics
+│   ├── notebooks/               #   workshop notebook (indexing → generation → legal prompting)
+│   ├── data/                    #   bundled ITB regulation PDFs
+│   ├── Dockerfile, docker-compose.yml, run-docker.sh/.bat
+│   └── requirements.txt
+└── cv_screening_rag/            # Case study 2: CV screening (plain OpenAI SDK + FAISS)
+    ├── app/streamlit_app.py
+    ├── rag/rag_core.py
+    ├── notebooks/CV_Screening_RAG.ipynb
+    ├── Dockerfile, docker-compose.yml
+    └── requirements.txt
 ```
 
-Buka browser di `http://localhost:8501`
+## Design notes and limitations
 
-### 3. Atau Jalankan CV Screening RAG
+The code is kept simple on purpose so that every part can be read during the session. Here is where it stops and what a production system would add:
 
-```bash
-cd cv_screening_rag
-streamlit run app/streamlit_app.py
-```
+- **Retrieval quality signals are not an evaluation.** The coverage, diversity and confidence scores in the JDIH app are lexical heuristics that help you see how retrieval behaves. A real evaluation needs a labelled question-and-answer set, measuring both retrieval recall and answer faithfulness (for example with [RAGAS](https://github.com/explodinggradients/ragas)).
+- **Reranking is a weighted blend of 0.7 × cosine similarity and 0.3 × keyword overlap.** A cross-encoder reranker is the natural next step.
+- **Query expansion uses a small hand-written Indonesian synonym list.** For a larger corpus, LLM-based query rewriting or hybrid search (BM25 plus vectors) would work better.
+- **The FAISS flat index lives in the same process as the app.** That is fine for thousands of chunks. For multiple users or larger corpora, use a managed vector database such as pgvector, Qdrant or Pinecone.
+- **Data leaves your machine.** Document chunks and questions are sent to the OpenAI API. Only upload CVs you have consent to process.
 
-### 4. Atau Gunakan Jupyter Notebook
+## Data
 
-```bash
-jupyter notebook notebooks/workshop.ipynb
-```
+The JDIH corpus is made of public regulations issued by Institut Teknologi Bandung. JDIH stands for *Jaringan Dokumentasi dan Informasi Hukum*, the legal documentation network.
 
-## 🎯 Fitur Utama
+| File | Document |
+|---|---|
+| `PerRektor-316-2022-Kemahasiswaan.pdf` | Peraturan Rektor ITB No. 316/2022: Kemahasiswaan (student affairs) |
+| `SE-777-2025-MAPAK.pdf` | Surat Edaran No. 777/2025: MAPAK, the new-student orientation programme |
+| `SE-646-2025-Standar-Tenan-Event-K3L.pdf` | Surat Edaran No. 646/2025: health and safety (K3L) standards for food tenants at campus events |
+| `SE-184-2025-Pembelajaran-Libur-Nyepi-Idul-Fitri.pdf` | Surat Edaran No. 184/2025: learning arrangements during the Nyepi and Idul Fitri 2025 holidays |
 
-### JDIH RAG (Enhanced Implementation)
-- ✅ **Multi-strategy Chunking** (recursive, semantic, paragraph)
-- ✅ **Query Expansion & Rewriting** dengan bahasa Indonesia
-- ✅ **Advanced Reranking** (similarity + keyword matching)
-- ✅ **Rich Metadata Extraction** (keywords, summary, file info)
-- ✅ **Real-time Quality Metrics** (coverage, diversity, confidence)
-- ✅ **Indonesian Language Support** untuk prompt dan response
-- ✅ **Persistent Vector Storage** dengan metadata lengkap
-- ✅ **Production-ready UI** dengan Streamlit
-- ✅ **Docker Support** untuk deployment
+The repository does not include any CVs. Upload your own.
 
-### CV Screening RAG (Baseline Implementation)
-- ✅ Basic PDF processing dan chunking
-- ✅ FAISS vector storage
-- ✅ Simple retrieval dan generation
-- ✅ Multi-model support (GPT-4o, GPT-3.5, dll)
+## Contributors
 
-## 📊 Perbandingan Fitur
-
-| Feature | CV Screening RAG | JDIH RAG | Workshop Notebook |
-|---------|------------------|----------|-------------------|
-| **Basic RAG Pipeline** | ✅ | ✅ | ✅ |
-| **Multiple Models** | ✅ | ✅ | ✅ |
-| **Indonesian Language** | ❌ | ✅ | Partial |
-| **Advanced Chunking** | ❌ | ✅ | Basic |
-| **Query Enhancement** | ❌ | ✅ | ❌ |
-| **Metadata Extraction** | ❌ | ✅ | ❌ |
-| **Quality Metrics** | ❌ | ✅ | ❌ |
-| **Reranking** | ❌ | ✅ | ❌ |
-| **Persistent Storage** | ❌ | ✅ | Basic |
-| **Production UI** | Basic | ✅ | ❌ |
-| **Docker Support** | ✅ | ✅ | ❌ |
-
-## 🛠️ Setup Development
-
-### Prerequisites
-- Python 3.10+
-- OpenAI API Key dengan credit yang cukup
-- Git
-
-### Environment Setup
-
-1. **Virtual Environment (Recommended)**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Linux/Mac
-   # atau
-   venv\Scripts\activate     # Windows
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Environment Variables**
-   ```bash
-   # .env file
-   OPENAI_API_KEY=your-api-key-here
-   ```
-
-## 📚 Workshop Materials
-
-### 1. Jupyter Notebook (`notebooks/workshop.ipynb`)
-- Implementasi step-by-step RAG pipeline
-- Penjelasan konsep indexing dan generation
-- Hands-on coding exercises
-
-### 2. Streamlit Applications
-- **JDIH RAG**: Advanced implementation dengan fitur industri
-- **CV Screening RAG**: Baseline implementation untuk perbandingan
-
-### 3. Documentation
-- Comprehensive README untuk setiap modul
-- Code comments dalam bahasa Indonesia
-- Best practices dan troubleshooting guide
-
-## 🎓 Learning Objectives
-
-Setelah mengikuti workshop ini, peserta akan memahami:
-
-1. **Konsep Dasar RAG**
-   - Indexing pipeline (loading, chunking, embedding, storage)
-   - Generation pipeline (retrieval, augmentation, generation)
-
-2. **Advanced RAG Techniques**
-   - Multiple chunking strategies
-   - Query expansion dan rewriting
-   - Reranking dan filtering
-   - Metadata extraction dan utilization
-
-3. **Production Considerations**
-   - Quality metrics dan evaluation
-   - Error handling dan logging
-   - Scalability dan performance
-   - User interface design
-
-4. **Industry Best Practices**
-   - Modular architecture
-   - Configuration management
-   - Testing dan validation
-   - Deployment strategies
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-1. **OpenAI API Key Error**
-   ```bash
-   # Check API key
-   echo $OPENAI_API_KEY
-   # atau test di Python
-   python -c "import openai; print(openai.api_key)"
-   ```
-
-2. **Package Installation Issues**
-   ```bash
-   # Update pip
-   pip install --upgrade pip
-   # Install with verbose output
-   pip install -r requirements.txt -v
-   ```
-
-3. **PDF Loading Issues**
-   - Pastikan PDF tidak ter-password
-   - Check file permissions
-   - Coba dengan PDF yang lebih kecil dulu
-
-4. **Memory Issues**
-   - Kurangi chunk size atau jumlah dokumen
-   - Gunakan embedding model yang lebih kecil
-   - Monitoring memory usage
-
-## 🤝 Contributing
-
-Untuk kontribusi atau perbaikan:
-1. Fork repository
-2. Create feature branch
-3. Commit changes dengan deskripsi yang jelas
-4. Submit pull request
-
-## 📞 Support
-
-- **Workshop Support**: Hubungi instruktur atau TA
-- **Technical Issues**: Create issue di repository
-- **Documentation**: Check README di setiap folder modul
-
-## 📄 License
-
-Project ini dibuat untuk keperluan edukasi workshop ICoDSE 2025.
-
----
-
-**🎯 Selamat belajar dan semoga workshop ini bermanfaat!**
-
-*Dikembangkan dengan ❤️ untuk ICoDSE 2025 Workshop*
+- [@AustinPardosi](https://github.com/AustinPardosi)
+- [@akhmadst1](https://github.com/akhmadst1)
