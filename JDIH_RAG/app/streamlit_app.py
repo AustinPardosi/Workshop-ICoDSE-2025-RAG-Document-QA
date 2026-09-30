@@ -272,11 +272,11 @@ if st.session_state.vector_store is not None:
     # Example queries
     with st.expander("💡 Contoh Pertanyaan"):
         example_queries = [
-            "Berapa lama cuti hamil untuk mahasiswa ITB?",
-            "Apa saja persyaratan untuk mengambil cuti akademik?",
-            "Bagaimana prosedur pengajuan skripsi?",
-            "Kapan deadline pembayaran SPP?",
-            "Siapa yang bisa mengajukan dispensasi ujian?",
+            "Apa saja tujuan umum dan khusus dari kegiatan MAPAK di ITB?",
+            "Apa saja hal yang dilarang keras dilakukan panitia selama MAPAK?",
+            "Apa sanksi bagi tenan makanan yang melanggar ketentuan K3L saat event di kampus?",
+            "Bagaimana penyesuaian kegiatan pembelajaran saat libur Nyepi dan Idul Fitri 2025?",
+            "Apa saja bentuk organisasi kemahasiswaan yang diakui di ITB?",
         ]
 
         for i, query in enumerate(example_queries):
@@ -287,7 +287,7 @@ if st.session_state.vector_store is not None:
     current_query = st.text_input(
         "Masukkan pertanyaan Anda:",
         value=st.session_state.get("current_query", ""),
-        placeholder="Contoh: Berapa lama cuti hamil untuk mahasiswa ITB?",
+        placeholder="Contoh: Apa saja tujuan kegiatan MAPAK di ITB?",
     )
 
     col1, col2 = st.columns([1, 4])
@@ -301,7 +301,7 @@ if st.session_state.vector_store is not None:
         st.rerun()
 
     # Process query
-    if ask_button and current_query:
+    if ask_button and current_query.strip():
         with st.spinner("🤔 Mencari jawaban..."):
             try:
                 # Enhanced retrieval
@@ -423,7 +423,7 @@ if st.session_state.vector_store is not None:
                             f"""
                         <div class="doc-source">
                             <h5>📄 Dokumen {i+1}: {metadata.get('filename', 'Unknown')}</h5>
-                            <p><strong>Similarity Score:</strong> {1-similarity_score:.2%} | 
+                            <p><strong>Similarity Score:</strong> {similarity_score:.2%} | 
                                <strong>Combined Score:</strong> {combined_score:.2%}</p>
                             <p><strong>Keywords:</strong> {metadata.get('keywords', 'Tidak ada')}</p>
                             <details>

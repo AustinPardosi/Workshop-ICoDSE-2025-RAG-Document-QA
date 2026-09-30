@@ -8,12 +8,11 @@ from tqdm import tqdm
 from datetime import datetime
 
 import numpy as np
-import faiss
 from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain_community.docstore.in_memory import InMemoryDocstore
+from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain_openai import ChatOpenAI
 
 from openai import OpenAI
@@ -311,7 +310,7 @@ def build_enhanced_vector_store(
     chunking_strategy: str = "recursive",
     chunk_size: int = 1000,
     chunk_overlap: int = 100,
-) -> FAISS:
+) -> Tuple[FAISS, List[DocChunk]]:
     """Build vector store dengan fitur enhanced"""
 
     embeddings = OpenAIEmbeddings(
@@ -357,18 +356,15 @@ def build_enhanced_vector_store(
             }
             chunk_metadatas.append(chunk_metadata)
 
-    # Create vector store
-    index = faiss.IndexFlatIP(1536)  # dimension untuk text-embedding-3-small
-    vector_store = FAISS(
-        embedding_function=embeddings,
-        index=index,
-        docstore=InMemoryDocstore(),
-        index_to_docstore_id={},
-    )
-
-    # Add documents
+    # Create vector store. Inner product = cosine similarity karena embedding OpenAI
+    # sudah ternormalisasi; dimensi index mengikuti model (1536 small, 3072 large)
     texts = [chunk.text for chunk in all_chunks]
-    vector_store.add_texts(texts, metadatas=chunk_metadatas)
+    vector_store = FAISS.from_texts(
+        texts,
+        embeddings,
+        metadatas=chunk_metadatas,
+        distance_strategy=DistanceStrategy.MAX_INNER_PRODUCT,
+    )
 
     return vector_store, all_chunks
 
@@ -475,8 +471,8 @@ def enhanced_retrieval(
             )
 
             combined_score = (
-                0.7 * (1 - similarity_score) + 0.3 * keyword_overlap
-            )  # Kombinasi similarity + keyword overlap
+                0.7 * similarity_score + 0.3 * keyword_overlap
+            )  # Kombinasi cosine similarity (makin besar makin mirip) + keyword overlap
 
             scored_docs.append(
                 {
